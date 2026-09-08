@@ -335,6 +335,13 @@ The 5-sample moving-average filter reduced the measured ADC signal variation by 
 | Warning percentage | 5.66 % |
 
 The collected dataset was used to evaluate ADC filtering performance, environmental sensor measurements, ultrasonic distance measurements, and threshold-based warning detection.
+## System Output
+
+### ADC Signal Filtering
+
+![ADC Raw vs Filtered](data/plots/adc_raw_vs_filtered.png)
+
+The plot shows the raw ADC signal compared with the 5-sample moving-average filtered signal, with the warning threshold included for event detection.
 
 ## Real-Time Dashboard
 
