@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+sensor_data.csv
+python-monitor/dashboard_old.py

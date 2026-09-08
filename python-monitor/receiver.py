@@ -1,114 +1,142 @@
 import serial
 import csv
+import os
 from datetime import datetime
-from pathlib import Path
 
-# Arduino serial configuration
+# =========================
+# Serial Configuration
+# =========================
+
 PORT = "COM5"
 BAUD_RATE = 9600
 
-# Project data directory
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-DATA_FILE = DATA_DIR / "sensor_data.csv"
-last_sequence = None
+# =========================
+# Correct project paths
+# =========================
 
-# Create data directory if it doesn't exist
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+DATA_DIR = os.path.join(BASE_DIR, "data")
+DATA_FILE = os.path.join(DATA_DIR, "sensor_data.csv")
+
+# Create data folder if it doesn't exist
+os.makedirs(DATA_DIR, exist_ok=True)
+
+print("Data file:", DATA_FILE)
+
+# =========================
 # Connect to Arduino
+# =========================
+
 ser = serial.Serial(PORT, BAUD_RATE, timeout=1)
 
 print("Connected to Arduino Nano")
 print("Waiting for data...")
 
-# Open CSV file
+# =========================
+# Create/open CSV
+# =========================
+
+file_exists = os.path.exists(DATA_FILE)
+
 with open(DATA_FILE, "a", newline="") as file:
 
     writer = csv.writer(file)
 
-    # Add header if the file is empty
-    if DATA_FILE.stat().st_size == 0:
+    # Create header if file is new
+    if not file_exists or os.path.getsize(DATA_FILE) == 0:
+
         writer.writerow([
             "timestamp",
             "sequence",
             "raw_value",
             "filtered_value",
+            "temperature",
+            "humidity",
+            "distance",
             "status"
         ])
 
+        file.flush()
+
+        print("Created CSV file.")
+
+    # =========================
+    # Receive data
+    # =========================
+
     while True:
 
-        line = ser.readline().decode("utf-8").strip()
+        line = ser.readline().decode(
+            "utf-8",
+            errors="ignore"
+        ).strip()
 
         if not line:
             continue
 
         print(line)
 
+        # Ignore firmware messages
+        if not line.startswith("DATA,"):
+            continue
+
         parts = line.split(",")
 
         # Expected:
-        # DATA,sequence,raw,filtered,status
-        if len(parts) != 5:
+        #
+        # DATA,
+        # sequence,
+        # raw,
+        # filtered,
+        # temperature,
+        # humidity,
+        # distance,
+        # status
+
+        if len(parts) != 8:
             print("Invalid packet:", line)
             continue
 
-        packet_type = parts[0]
-
-        if packet_type != "DATA":
-            print("Unknown packet type:", line)
-            continue
-
         try:
+
             sequence = int(parts[1])
             raw_value = int(parts[2])
             filtered_value = int(parts[3])
-            status = parts[4]
+
+            # Sensor values may occasionally be ERROR
+            if parts[4] == "ERROR":
+                temperature = ""
+            else:
+                temperature = float(parts[4])
+
+            if parts[5] == "ERROR":
+                humidity = ""
+            else:
+                humidity = float(parts[5])
+
+            if parts[6] == "ERROR":
+                distance = ""
+            else:
+                distance = float(parts[6])
+
+            status = parts[7]
+
+            timestamp = datetime.now().isoformat()
+
+            writer.writerow([
+                timestamp,
+                sequence,
+                raw_value,
+                filtered_value,
+                temperature,
+                humidity,
+                distance,
+                status
+            ])
+
+            file.flush()
+
         except ValueError:
-            print("Invalid numeric data:", line)
-            continue
 
-        if last_sequence is not None:
-
-            expected_sequence = last_sequence + 1
-
-            if sequence != expected_sequence:
-
-                if sequence > expected_sequence:
-                    print(
-                        f"WARNING: Missing packet(s) "
-                        f"{expected_sequence} to {sequence - 1}"
-                    )
-
-                elif sequence <= last_sequence:
-                    print(
-                        f"WARNING: Unexpected sequence number {sequence}"
-                    )
-
-        last_sequence = sequence
-        # Validate measurement ranges
-        if not (0 <= raw_value <= 1023):
-            print(f"Invalid raw ADC value: {raw_value}")
-            continue
-
-        if not (0 <= filtered_value <= 1023):
-            print(f"Invalid filtered ADC value: {filtered_value}")
-            continue
-
-        # Validate status
-        if status not in ("NORMAL", "WARNING"):
-            print(f"Invalid status: {status}")
-            continue
-            
-        timestamp = datetime.now().isoformat()
-
-        writer.writerow([
-            timestamp,
-            sequence,
-            raw_value,
-            filtered_value,
-            status
-        ])
-
-        file.flush()
+            print("Invalid data:", line)
