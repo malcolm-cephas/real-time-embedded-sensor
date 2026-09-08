@@ -335,6 +335,14 @@ The 5-sample moving-average filter reduced the measured ADC signal variation by 
 | Warning percentage | 5.66 % |
 
 The collected dataset was used to evaluate ADC filtering performance, environmental sensor measurements, ultrasonic distance measurements, and threshold-based warning detection.
+### Sensor Measurements
+
+![HC-SR04 Distance](data/plots/distance.png)
+
+![DHT22 Temperature](data/plots/temperature.png)
+
+![DHT22 Humidity](data/plots/humidity.png)
+
 ## System Output
 
 ### ADC Signal Filtering
