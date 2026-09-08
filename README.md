@@ -238,6 +238,7 @@ sequenceDiagram
     Python->>Python: Parse packet
     Python->>CSV: Store sensor measurements
     Python->>Python: Analyze and visualize data
+```
 
 ## Python Data Pipeline
 
